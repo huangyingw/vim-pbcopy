@@ -1,0 +1,6 @@
+[remote "origin"]
+	url = git@github.com:huangyingw/vim-pbcopy.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
+[remote "ahw"]
+	url = https://github.com/ahw/vim-pbcopy.git
+	fetch = +refs/heads/*:refs/remotes/ahw/*
