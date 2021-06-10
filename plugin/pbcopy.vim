@@ -1,7 +1,7 @@
 let g:vim_pbcopy_local_cmd = "pbcopy"
 
-vnoremap <silent> cy :<C-U>call <SID>copyVisualSelection(visualmode(), 1)<CR>
-nnoremap <silent> cy :set opfunc=<SID>copyVisualSelection<CR>g@
+vnoremap <silent> y :<C-U>call <SID>copyVisualSelection(visualmode(), 1)<CR>
+nnoremap <silent> y :set opfunc=<SID>copyVisualSelection<CR>g@
 
 function! s:getVisualSelection()
     let [lnum1, col1] = getpos("'<")[1:2]
