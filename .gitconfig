@@ -10,3 +10,5 @@
 [gsync]
     remote = ahw
     branch = master
+[push]
+    remote = origin
