@@ -4,3 +4,6 @@
 [remote "ahw"]
 	url = https://github.com/ahw/vim-pbcopy.git
 	fetch = +refs/heads/*:refs/remotes/ahw/*
+[branch "master"]
+	remote = ahw
+	merge = refs/heads/master
