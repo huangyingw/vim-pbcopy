@@ -7,3 +7,8 @@
 [branch "master"]
 	remote = ahw
 	merge = refs/heads/master
+[gsync]
+    remote = ahw
+    branch = master
+[push]
+    remote = origin
