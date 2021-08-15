@@ -91,7 +91,7 @@ function! s:getShellEscapedLines(listOfLines)
     endif
 endfunction
 
-function! s:sendTextToPbCopy(escapedText)
+function! SendTextToPbCopy(escapedText)
     try
         if s:isRunningLocally()
             " Call the UNIX echo command. The -n means do not output trailing newline.
@@ -139,7 +139,7 @@ function! s:copyVisualSelection(type, ...)
     " -- let transformedLines = s:getTransformedLines(lines)
 
     let escapedLines = s:getShellEscapedLines(lines)
-    let error =  s:sendTextToPbCopy(escapedLines)
+    let error =  SendTextToPbCopy(escapedLines)
 
     " Reset the selection and register contents
     let &selection = sel_save
