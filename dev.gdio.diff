@@ -1,5 +1,4 @@
 diff --git a/plugin/pbcopy.vim b/plugin/pbcopy.vim
-index 3bb622d..dbda83a 100644
 --- ./plugin/pbcopy.vim
 +++ ./plugin/pbcopy.vim
 @@ -91,7 +91,7 @@ function! s:getShellEscapedLines(listOfLines)
