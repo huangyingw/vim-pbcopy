@@ -1,3 +1,22 @@
+diff --git a/.gitconfig b/.gitconfig
+new file mode 100644
+--- /dev/null
++++ ./.gitconfig
+@@ -0,0 +1,14 @@
++[remote "origin"]
++	url = git@github.com:huangyingw/vim-pbcopy.git
++	fetch = +refs/heads/*:refs/remotes/origin/*
++[remote "ahw"]
++	url = https://github.com/ahw/vim-pbcopy.git
++	fetch = +refs/heads/*:refs/remotes/ahw/*
++[branch "master"]
++	remote = ahw
++	merge = refs/heads/master
++[gsync]
++    remote = ahw
++    target = ahw/master
++[push]
++    remote = origin
 diff --git a/plugin/pbcopy.vim b/plugin/pbcopy.vim
 --- ./plugin/pbcopy.vim
 +++ ./plugin/pbcopy.vim
