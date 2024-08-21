@@ -12,103 +12,20 @@ function! s:getVisualSelection()
     return lines
 endfunction
 
+" 检测操作系统并设置适当的 netcat 命令
+function! s:setNetcatCommand()
+    if has('mac') || system('uname') =~# 'Darwin'
+        let g:vim_pbcopy_nc_cmd = "nc localhost 2224"
+    else
+        let g:vim_pbcopy_nc_cmd = "nc -q 0 localhost 2224"
+    endif
+endfunction
+
+call s:setNetcatCommand()
+
+" 使用更可靠的方法检测是否在本地运行
 function! s:isRunningLocally()
-    if len($SSH_CLIENT)
-        return 0
-    else
-        return 1
-    endif
-endfunction
-
-function! s:getTransformedLine(line)
-    let transforms = {}
-    if exists("g:vim_pbcopy_regex_transforms")
-        let transforms = g:vim_pbcopy_regex_transforms
-    endif
-
-    for key in keys(transforms)
-        echom "[getTransformedLine] line: <" . a:line . ">"
-        echom "[getTransformedLine] match expression: " . key . ", regex transform: " . transforms[key]
-        if a:line =~ key
-            let a = substitute(a:line, key, transforms[key], "")
-            echom "[getTransformedLine] tranformed line: " . a
-        endif
-    endfor
-
-    return a:line
-endfunction
-
-function! s:getTransformedLines(listOfLines)
-    let transforms = {}
-    if exists("g:vim_pbcopy_regex_transforms")
-        let transforms = g:vim_pbcopy_regex_transforms
-    endif
-
-    for key in keys(transforms)
-        " echom "match expression: " . key . ", regex transform: " . transforms[key]
-    endfor
-    return a:listOfLines
-endfunction
-
-function! s:getShellEscapedLines(listOfLines)
-    " Join the lines with the literal characters '\n' (two chars) so that
-    " they will be echo-ed correctly. Passing a non-zero second argument to
-    " shellescape means it will escape "!" and other characters special to
-    " Vim. See :help shellescape. We need this because otherwise execute"
-    " will replace "!" with the previously-executed command and chaos will
-    " ensue.
-
-    " Original content
-    " Note there is very weird behavior when attempting to copy a line which
-    " contains the literal character \n. Example:
-    "
-    "   console.log('hello\nthere');
-    "
-
-    if exists("g:vim_pbcopy_escape_backslashes") && g:vim_pbcopy_escape_backslashes
-        " Global override is set and is truthy
-        echom "[vim-pbcopy debug] forcing shellescape(escape(...))"
-        return shellescape(escape(join(a:listOfLines, "\n"), '\'), 1)
-    elseif exists("g:vim_pbcopy_escape_backslashes")
-        " Global override is set and is falsey
-        echom "[vim-pbcopy debug] forcing shellescape(...)"
-        return shellescape(join(a:listOfLines, "\n"), 1)
-    endif
-
-    if s:isRunningLocally()
-        " echom "[vim-pbcopy debug] shellescape(escape(...))"
-        " return shellescape(escape(join(a:listOfLines, "\n"), '\'), 1)
-
-        " Confirmed working on Mac OS X Yosemite
-        echom "[vim-pbcopy debug] shellescape(...)"
-        return shellescape(join(a:listOfLines, "\n"), 1)
-    else
-        " So far works on all Linux distros I've used. Assuming that when
-        " Vim is not running locally it's because you're SSH-ing into a
-        " Linux host.
-        echom "[vim-pbcopy debug] shellescape(escape(...))"
-        return shellescape(escape(join(a:listOfLines, "\n"), '\'), 1)
-    endif
-endfunction
-
-function! SendTextToPbCopy(escapedText)
-    try
-        if s:isRunningLocally()
-            " Call the UNIX echo command. The -n means do not output trailing newline.
-            execute "silent !echo -n " . a:escapedText . " | " . g:vim_pbcopy_local_cmd
-        else
-            " Call the UNIX echo command. The -n means do not output trailing newline.
-            execute "silent !echo -n " . a:escapedText . " | " . g:vim_pbcopy_remote_cmd
-        endif
-        redraw! " Fix up the screen
-        return 0
-    catch /E121/
-        " Undefined variable error
-        echohl WarningMsg
-        echom "Please set g:vim_pbcopy_remote_cmd in your ~/.vimrc with something like: 'let g:vim_pbcopy_remote_cmd = \"ssh hostname.example.com pbcopy\"'"
-        echohl None
-        return 1
-    endtry
+    return empty($SSH_TTY) && empty($SSH_CLIENT) && empty($SSH_CONNECTION)
 endfunction
 
 function! s:copyVisualSelection(type, ...)
@@ -117,31 +34,41 @@ function! s:copyVisualSelection(type, ...)
     let reg_save = @@
 
     if a:0  " Invoked from Visual mode, use '< and '> marks.
-      silent exe "normal! `<" . a:type . "`>y"
+        silent exe "normal! `<" . a:type . "`>y"
     elseif a:type == 'line'
-      silent exe "normal! '[V']y"
+        silent exe "normal! '[V']y"
     elseif a:type == 'block'
-      silent exe "normal! `[\<C-V>`]y"
+        silent exe "normal! `[\<C-V>`]y"
     else
-      silent exe "normal! `[v`]y"
+        silent exe "normal! `[v`]y"
     endif
 
     let lines = split(@@, "\n")
+    let error = s:sendTextToPbCopy(lines)
 
-    " -- " Transform individual lines
-    " -- let i = 0
-    " -- while i < len(lines)
-    " --     let lines[i] = s:getTransformedLine(lines[i])
-    " --     let i = i + 1
-    " -- endwhile
-
-    " -- " Transform entire list of lines
-    " -- let transformedLines = s:getTransformedLines(lines)
-
-    let escapedLines = s:getShellEscapedLines(lines)
-    let error =  SendTextToPbCopy(escapedLines)
-
-    " Reset the selection and register contents
     let &selection = sel_save
-    " let @@ = reg_save
+    let @@ = reg_save
+
+    if error == 0
+        echo "Text copied to clipboard"
+    else
+        echoerr "Failed to copy text to clipboard"
+    endif
 endfunction
+
+" 改进的发送文本到pbcopy函数，不使用 shellescape
+function! s:sendTextToPbCopy(lines)
+    let text = join(a:lines, "\n")
+    " 使用 printf 来确保换行符被正确处理
+    let cmd = printf("printf %%s %s | %s", shellescape(text), g:vim_pbcopy_nc_cmd)
+    let output = system(cmd)
+    if v:shell_error
+        echoerr "Clipboard copy failed: " . output
+        return 1
+    endif
+    return 0
+endfunction
+
+" 设置快捷键
+vnoremap <silent> cy :<C-U>call <SID>copyVisualSelection(visualmode(), 1)<CR>
+nnoremap <silent> cy :set opfunc=<SID>copyVisualSelection<CR>g@
